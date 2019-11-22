@@ -268,8 +268,7 @@ int printSecs(void *N,
               std::string &secName,
               image_section_header s,
               bounded_buffer *data) {
-  static_cast<void>(N);
-  static_cast<void>(s);
+  parsed_pe *p = reinterpret_cast<parsed_pe*>(N);
 
   std::cout << "Sec Name: " << secName << "\n";
   std::cout << "Sec Base: 0x" << std::hex << secBase << "\n";
@@ -278,6 +277,17 @@ int printSecs(void *N,
   else
     std::cout << "Sec Size: 0"
               << "\n";
+  std::cout << "Vir Size: " << to_string<uint64_t>(s.Misc.VirtualSize, std::dec) << "\n";
+
+  size_t s_alignment;
+  if (p->peHeader.nt.OptionalMagic == NT_OPTIONAL_32_MAGIC)
+    s_alignment = p->peHeader.nt.OptionalHeader.SectionAlignment;
+  else
+    s_alignment = p->peHeader.nt.OptionalHeader64.SectionAlignment;
+
+  VA secEnd = (secBase + s.Misc.VirtualSize) + (s_alignment-1) & ~(s_alignment-1);
+  std::cout << "Sec End: 0x" << to_string<uint64_t>(secEnd, std::hex) << "\n";
+
   return 0;
 }
 
@@ -425,7 +435,7 @@ int main(int argc, char *argv[]) {
     IterSymbols(p, printSymbols, NULL);
     std::cout << "Sections: "
               << "\n";
-    IterSec(p, printSecs, NULL);
+    IterSec(p, printSecs, reinterpret_cast<void*>(p));
     std::cout << "Exports: "
               << "\n";
     IterExpVA(p, printExps, NULL);
